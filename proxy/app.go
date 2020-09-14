@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	_ "github.com/mattn/go-sqlite3"
@@ -12,9 +13,11 @@ import (
 )
 
 type RequestToSave struct {
+	host string
 	url string
 	headers URLHeaders
 	body string
+	proto string
 }
 
 type URLHeaders map[string][]string
@@ -31,13 +34,13 @@ func NewProxy(db *sql.DB) *Proxy {
 
 func (p *Proxy) HandleProxy(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodConnect {
-		//handleTunneling(w, r)
+		p.https(w, r)
 	} else {
 		p.http(w, r)
 	}
 }
 
-func https(w http.ResponseWriter, r *http.Request) {
+func (p *Proxy) https(w http.ResponseWriter, r *http.Request) {
 	destConn, err := net.DialTimeout("tcp", r.Host, 10*time.Second)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
@@ -52,6 +55,7 @@ func https(w http.ResponseWriter, r *http.Request) {
 	clientConn, _, err := hijacker.Hijack()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		return
 	}
 	go transfer(destConn, clientConn)
 	go transfer(clientConn, destConn)
@@ -64,6 +68,27 @@ func transfer(destination io.WriteCloser, source io.ReadCloser) {
 }
 
 func (p *Proxy) http(w http.ResponseWriter, r *http.Request) {
+	req := RequestToSave{
+		host:     r.Host,
+		url:     r.URL.Path,
+		headers: map[string][]string{},
+		body:    "",
+		proto:    "http",
+	}
+	// Считать заголовки и тело запроса
+	bodyByte, err := ioutil.ReadAll(r.Body)
+	req.body = string(bodyByte)
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyByte))
+	for kHeader, vHeader := range r.Header {
+		if kHeader != "Proxy-Connection" {
+			req.headers[kHeader] = []string{}
+			for _, v := range vHeader {
+				req.headers[kHeader] = append(req.headers[kHeader], v)
+			}
+		}
+	}
+	p.saveRequest(req)
+
 	resp, err := http.DefaultTransport.RoundTrip(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
@@ -71,23 +96,12 @@ func (p *Proxy) http(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	req := RequestToSave{
-		url:     r.Host,
-		headers: map[string][]string{},
-		body:    "",
-	}
+	// Копировать ответ в ответ для клиента
 	for kHeader, vHeader := range resp.Header {
-		req.headers[kHeader] = []string{}
 		for _, v := range vHeader {
 			w.Header().Add(kHeader, v)
-			req.headers[kHeader] = append(req.headers[kHeader], v)
 		}
 	}
-
-	bodyByte, err := ioutil.ReadAll(r.Body)
-	req.body = string(bodyByte)
-	p.saveRequest(req)
-
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
 }
@@ -98,8 +112,8 @@ func (p *Proxy) saveRequest(request RequestToSave) {
 		println(err)
 	}
 
-	_, err = p.db.Exec("insert into requests (url, headers, body) values ($1, $2, $3)",
-		request.url, headers, request.body)
+	_, err = p.db.Exec("insert into requests (host, url, headers, body, proto) values ($1, $2, $3, $4, $5)",
+		request.host, request.url, headers, request.body, request.proto)
 	if err != nil{
 		println(err)
 	}

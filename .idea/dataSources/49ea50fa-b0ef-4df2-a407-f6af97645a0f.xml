@@ -35,34 +35,44 @@
       <NotNull>1</NotNull>
       <SequenceIdentity>1</SequenceIdentity>
     </column>
-    <key id="13" parent="6">
+    <column id="13" parent="6" name="host">
+      <Position>5</Position>
+      <DataType>text|0s</DataType>
+      <DefaultExpression>&apos;&apos;</DefaultExpression>
+    </column>
+    <column id="14" parent="6" name="proto">
+      <Position>6</Position>
+      <DataType>text|0s</DataType>
+      <DefaultExpression>&apos;&apos;</DefaultExpression>
+    </column>
+    <key id="15" parent="6">
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <column id="14" parent="7" name="type">
+    <column id="16" parent="7" name="type">
       <Position>1</Position>
       <DataType>text|0s</DataType>
     </column>
-    <column id="15" parent="7" name="name">
+    <column id="17" parent="7" name="name">
       <Position>2</Position>
       <DataType>text|0s</DataType>
     </column>
-    <column id="16" parent="7" name="tbl_name">
+    <column id="18" parent="7" name="tbl_name">
       <Position>3</Position>
       <DataType>text|0s</DataType>
     </column>
-    <column id="17" parent="7" name="rootpage">
+    <column id="19" parent="7" name="rootpage">
       <Position>4</Position>
       <DataType>int|0s</DataType>
     </column>
-    <column id="18" parent="7" name="sql">
+    <column id="20" parent="7" name="sql">
       <Position>5</Position>
       <DataType>text|0s</DataType>
     </column>
-    <column id="19" parent="8" name="name">
+    <column id="21" parent="8" name="name">
       <Position>1</Position>
     </column>
-    <column id="20" parent="8" name="seq">
+    <column id="22" parent="8" name="seq">
       <Position>2</Position>
     </column>
   </database-model>
