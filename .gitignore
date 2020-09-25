@@ -1,3 +1,5 @@
 /.idea
 /certs
 history.sqlite
+*.crt
+*.key
